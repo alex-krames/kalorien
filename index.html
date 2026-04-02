@@ -933,6 +933,13 @@ async function openBarcode(target){
     });
   }
   try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}
+    });
+    barcodeStream=stream;
+    const video=document.getElementById('barcode-video');
+    video.srcObject=stream;
+    await video.play();
     const hints=new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
       ZXing.BarcodeFormat.EAN_13,
@@ -942,11 +949,7 @@ async function openBarcode(target){
     ]);
     zxingReader=new ZXing.BrowserMultiFormatReader(hints);
     document.getElementById('barcode-status').textContent='Barcode in die rote Linie halten';
-    const video=document.getElementById('barcode-video');
-    const devices=await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const backCam=devices.find(d=>d.label.toLowerCase().includes('back')||d.label.toLowerCase().includes('rear'))||devices[devices.length-1];
-    const deviceId=backCam?.deviceId||undefined;
-    await zxingReader.decodeFromVideoDevice(deviceId,'barcode-video',async(result,err)=>{
+    zxingReader.decodeFromStream(stream,video,async(result,err)=>{
       if(result){
         const barcode=result.getText();
         document.getElementById('barcode-status').textContent='Barcode erkannt: '+barcode;
