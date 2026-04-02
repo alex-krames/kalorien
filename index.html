@@ -349,14 +349,18 @@ function getSaved(){return ls('kal_saved',[]) }
 
 function getMeals(){
   const d=getDays(),k=dateKey(dayOffset);
-  if(!d[k])d[k]=[[],[],[],[]];
-  while(d[k].length<4)d[k].push([]);
-  return d[k];
+  if(!d[k]||Array.isArray(d[k]))d[k]={meals:[[],[],[],[]],acts:[]};
+  if(!d[k].meals)d[k].meals=[[],[],[],[]];
+  if(!d[k].acts)d[k].acts=[];
+  while(d[k].meals.length<4)d[k].meals.push([]);
+  return d[k].meals;
 }
 
 function setMeals(meals){
   const d=getDays(),k=dateKey(dayOffset);
-  d[k]=meals;
+  if(!d[k]||Array.isArray(d[k]))d[k]={meals:[[],[],[],[]],acts:[]};
+  if(!d[k].acts)d[k].acts=[];
+  d[k].meals=meals;
   setDays(d);
 }
 
@@ -809,13 +813,14 @@ function checkBackupBanner(){
 
 function getActivities(){
   const d=getDays(),k=dateKey(dayOffset);
-  if(!d[k])d[k]=[[],[],[],[]];
-  return d[k].acts||[];
+  if(!d[k]||Array.isArray(d[k]))d[k]={meals:[[],[],[],[]],acts:[]};
+  if(!d[k].acts)d[k].acts=[];
+  return d[k].acts;
 }
 
 function setActivities(acts){
   const d=getDays(),k=dateKey(dayOffset);
-  if(!d[k])d[k]=[[],[],[],[]];
+  if(!d[k]||Array.isArray(d[k]))d[k]={meals:[[],[],[],[]],acts:[]};
   d[k].acts=acts;
   setDays(d);
 }
