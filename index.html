@@ -190,7 +190,10 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
 <div class="modal-bg" id="m-settings" style="display:none" onclick="bgClose(event,'m-settings')">
   <div class="modal">
     <div class="modal-handle" onclick="closeModal('m-settings')"></div>
-    <div class="modal-title">Einstellungen</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <span style="font-size:16px;font-weight:600">Einstellungen</span>
+      <button onclick="closeModal('m-settings')" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:22px;line-height:1;padding:0 2px">✕</button>
+    </div>
 
     <label class="field-label">Tageslimit (kcal)</label>
     <input type="number" id="cfg-limit" inputmode="numeric">
