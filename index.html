@@ -201,10 +201,30 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
     <div class="modal-title" style="font-size:15px">Mahlzeit speichern</div>
     <label class="field-label">Name der Mahlzeit</label>
     <input type="text" id="cfg-meal-name" placeholder="z. B. Müsli Frühstück">
-    <label class="field-label" style="margin-bottom:6px">Zutaten (Name · kcal/100g · Gramm)</label>
-    <div id="cfg-ing-list"></div>
-    <button class="btn-secondary" onclick="addIngRow()" style="margin-top:4px">+ Zutat</button>
-    <button class="btn-primary" onclick="saveMeal()">Mahlzeit speichern</button>
+    <div class="tab-row" style="margin-top:10px">
+      <button class="tab-btn active" id="mt-zutaten" onclick="setMealTab('zutaten')">Mit Zutaten</button>
+      <button class="tab-btn" id="mt-einfach" onclick="setMealTab('einfach')">Nur kcal</button>
+    </div>
+    <div id="mp-zutaten">
+      <label class="field-label">Zutat suchen</label>
+      <input type="text" id="cfg-srch" placeholder="Suchen..." oninput="cfgSearch(this.value)" autocomplete="off">
+      <div id="cfg-srch-results" class="search-results" style="display:none"></div>
+      <div id="cfg-srch-selected" style="display:none" class="selected-food-box">
+        <div class="selected-food-name" id="cfg-sel-name"></div>
+        <div class="grams-row">
+          <input type="number" id="cfg-sel-grams" placeholder="Gramm" inputmode="decimal" oninput="cfgCalcPreview()">
+          <span style="font-size:13px;color:var(--text2)">g =</span>
+          <span class="kcal-preview" id="cfg-sel-preview">0 kcal</span>
+        </div>
+        <button class="btn-secondary" style="margin-top:8px" onclick="cfgAddIngredient()">Zutat übernehmen</button>
+      </div>
+      <div id="cfg-ing-list" style="margin-top:8px"></div>
+    </div>
+    <div id="mp-einfach" style="display:none">
+      <label class="field-label">Kalorien gesamt (kcal)</label>
+      <input type="number" id="cfg-simple-kcal" placeholder="z. B. 450" inputmode="numeric">
+    </div>
+    <button class="btn-primary" onclick="saveMeal()" style="margin-top:10px">Mahlzeit speichern</button>
 
     <div class="divider"></div>
 
@@ -441,9 +461,9 @@ function renderSavedList(){
   const el=document.getElementById('saved-list-container');
   if(!saved.length){el.innerHTML='<div class="empty-hint">Noch keine gespeicherten Mahlzeiten.<br>Über ⚙️ anlegen.</div>';return}
   el.innerHTML='<div class="saved-list-wrap">'+saved.map((m,i)=>{
-    const tot=m.ingredients.reduce((s,x)=>s+Math.round(x.k100*x.g/100),0);
+    const meta=m.simpleKcal!=null?m.simpleKcal+' kcal':(m.ingredients?.length||0)+' Zutaten';
     return `<div class="saved-meal-row" onclick="openAdj(${i})">
-      <div><div class="saved-meal-name">${m.name}</div><div class="saved-meal-meta">${Math.round(tot)} kcal · ${m.ingredients.length} Zutaten</div></div>
+      <div><div class="saved-meal-name">${m.name}</div><div class="saved-meal-meta">${meta}</div></div>
       <span style="color:var(--text3);font-size:20px">›</span>
     </div>`;
   }).join('')+'</div>';
@@ -451,22 +471,34 @@ function renderSavedList(){
 
 function openAdj(idx){
   const saved=getSaved();
-  pendingSaved={meal:JSON.parse(JSON.stringify(saved[idx]))};
-  document.getElementById('m-adj-title').textContent=saved[idx].name+' anpassen';
+  const m=saved[idx];
+  pendingSaved={meal:JSON.parse(JSON.stringify(m))};
+  document.getElementById('m-adj-title').textContent=m.name+' anpassen';
   renderAdj();
   document.getElementById('m-adj').style.display='flex';
 }
 
 function renderAdj(){
   const el=document.getElementById('adj-ingredients');
-  el.innerHTML=pendingSaved.meal.ingredients.map((ing,i)=>`
-    <div class="adj-row">
-      <div class="adj-row-inputs">
-        <input type="text" value="${ing.name}" readonly style="flex:3;margin-bottom:0;color:var(--text2)">
-        <input type="number" value="${ing.g}" inputmode="decimal" style="flex:1;margin-bottom:0" oninput="updAdj(${i},this.value)">
+  const m=pendingSaved.meal;
+  if(m.simpleKcal!=null){
+    el.innerHTML=`<div class="selected-food-box">
+      <div class="selected-food-name">${m.name}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <input type="number" value="${m.simpleKcal}" inputmode="numeric" style="flex:1;margin-bottom:0" oninput="pendingSaved.meal.simpleKcal=parseFloat(this.value)||0">
+        <span style="font-size:13px;color:var(--text2)">kcal</span>
       </div>
-      <div class="adj-hint" id="ah-${i}">${Math.round(ing.k100*ing.g/100)} kcal</div>
-    </div>`).join('');
+    </div>`;
+  }else{
+    el.innerHTML=(m.ingredients||[]).map((ing,i)=>`
+      <div class="adj-row">
+        <div class="adj-row-inputs">
+          <input type="text" value="${ing.name}" readonly style="flex:3;margin-bottom:0;color:var(--text2)">
+          <input type="number" value="${ing.g}" inputmode="decimal" style="flex:1;margin-bottom:0" oninput="updAdj(${i},this.value)">
+        </div>
+        <div class="adj-hint" id="ah-${i}">${Math.round(ing.k100*ing.g/100)} kcal</div>
+      </div>`).join('');
+  }
 }
 
 function updAdj(i,val){
@@ -479,10 +511,15 @@ function updAdj(i,val){
 function confirmSaved(){
   if(!pendingSaved)return;
   const meals=getMeals();
-  pendingSaved.meal.ingredients.forEach(ing=>{
-    const kcal=Math.round(ing.k100*ing.g/100);
-    if(kcal>0)meals[curMealIdx].push({name:ing.name,kcal,grams:Math.round(ing.g)});
-  });
+  const m=pendingSaved.meal;
+  if(m.simpleKcal!=null){
+    if(m.simpleKcal>0)meals[curMealIdx].push({name:m.name,kcal:Math.round(m.simpleKcal)});
+  }else{
+    (m.ingredients||[]).forEach(ing=>{
+      const kcal=Math.round(ing.k100*ing.g/100);
+      if(kcal>0)meals[curMealIdx].push({name:ing.name,kcal,grams:Math.round(ing.g)});
+    });
+  }
   setMeals(meals);
   closeModal('m-adj');
   closeModal('m-add');
@@ -511,42 +548,124 @@ function confirmAdd(){
 function openSettings(){
   document.getElementById('cfg-limit').value=limit;
   document.getElementById('cfg-meal-name').value='';
-  document.getElementById('cfg-ing-list').innerHTML='';
-  addIngRow();
+  document.getElementById('cfg-simple-kcal').value='';
+  document.getElementById('cfg-srch').value='';
+  document.getElementById('cfg-srch-selected').style.display='none';
+  document.getElementById('cfg-srch-results').style.display='none';
+  cfgIngredients=[];
+  cfgSelFood=null;
+  setMealTab('zutaten');
+  renderCfgIngList();
   renderCfgSaved();
   document.getElementById('m-settings').style.display='flex';
 }
 
-function addIngRow(){
+let cfgSelFood=null;
+let cfgIngredients=[];
+let cfgMealTab='zutaten';
+let cfgSTimer=null;
+
+function setMealTab(t){
+  cfgMealTab=t;
+  ['zutaten','einfach'].forEach(x=>{
+    document.getElementById('mt-'+x).classList.toggle('active',x===t);
+    document.getElementById('mp-'+x).style.display=x===t?'block':'none';
+  });
+}
+
+function cfgSearch(q){
+  clearTimeout(cfgSTimer);
+  const el=document.getElementById('cfg-srch-results');
+  if(!q.trim()){el.style.display='none';return}
+  const local=BASE_DB.filter(x=>x.n.toLowerCase().includes(q.toLowerCase())).slice(0,6);
+  cfgShowResults(local);
+  if(q.length>=2){
+    cfgSTimer=setTimeout(async()=>{
+      try{
+        const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&lc=de&page_size=8`);
+        const data=await r.json();
+        const online=(data.products||[])
+          .filter(p=>p.product_name&&p.nutriments?.['energy-kcal_100g']>0)
+          .map(p=>({n:p.product_name,k:Math.round(p.nutriments['energy-kcal_100g'])}))
+          .filter(x=>!local.find(a=>a.n.toLowerCase()===x.n.toLowerCase()))
+          .slice(0,5);
+        cfgShowResults([...local,...online]);
+      }catch{}
+    },700);
+  }
+}
+
+function cfgShowResults(items){
+  const el=document.getElementById('cfg-srch-results');
+  if(!items.length){el.style.display='none';return}
+  el.innerHTML=items.map(x=>`<div class="search-item" onclick='cfgSelectFood(${JSON.stringify(x)})'>
+    <div class="search-item-name">${x.n}</div>
+    <div class="search-item-meta">${x.k} kcal / 100 g</div>
+  </div>`).join('');
+  el.style.display='block';
+}
+
+function cfgSelectFood(food){
+  cfgSelFood=food;
+  document.getElementById('cfg-srch-results').style.display='none';
+  document.getElementById('cfg-sel-name').textContent=food.n+' · '+food.k+' kcal/100g';
+  document.getElementById('cfg-sel-grams').value='';
+  document.getElementById('cfg-sel-preview').textContent='0 kcal';
+  document.getElementById('cfg-srch-selected').style.display='block';
+}
+
+function cfgCalcPreview(){
+  if(!cfgSelFood)return;
+  const g=parseFloat(document.getElementById('cfg-sel-grams').value)||0;
+  document.getElementById('cfg-sel-preview').textContent=Math.round(g*cfgSelFood.k/100)+' kcal';
+}
+
+function cfgAddIngredient(){
+  if(!cfgSelFood){toast('Zutat auswählen');return}
+  const g=parseFloat(document.getElementById('cfg-sel-grams').value)||0;
+  if(!g){toast('Gramm eingeben');return}
+  cfgIngredients.push({name:cfgSelFood.n,k100:cfgSelFood.k,g});
+  cfgSelFood=null;
+  document.getElementById('cfg-srch').value='';
+  document.getElementById('cfg-srch-selected').style.display='none';
+  renderCfgIngList();
+  toast(cfgIngredients[cfgIngredients.length-1].name+' hinzugefügt');
+}
+
+function renderCfgIngList(){
   const el=document.getElementById('cfg-ing-list');
-  const row=document.createElement('div');
-  row.className='ing-row';
-  row.innerHTML=`<input type="text" placeholder="Zutat" style="margin-bottom:0">
-    <input type="number" placeholder="kcal/100g" inputmode="decimal" style="margin-bottom:0">
-    <input type="number" placeholder="g" inputmode="decimal" style="margin-bottom:0">
-    <button class="ing-del" onclick="this.parentNode.remove()">✕</button>`;
-  el.appendChild(row);
+  if(!cfgIngredients.length){el.innerHTML='';return}
+  el.innerHTML='<div class="saved-list-wrap">'+cfgIngredients.map((ing,i)=>`
+    <div class="saved-meal-row" style="cursor:default">
+      <div><div class="saved-meal-name">${ing.name}</div><div class="saved-meal-meta">${ing.g}g · ${Math.round(ing.k100*ing.g/100)} kcal</div></div>
+      <button onclick="cfgDelIng(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px">✕</button>
+    </div>`).join('')+'</div>';
+}
+
+function cfgDelIng(i){
+  cfgIngredients.splice(i,1);
+  renderCfgIngList();
 }
 
 function saveMeal(){
   const name=document.getElementById('cfg-meal-name').value.trim();
   if(!name){toast('Name eingeben');return}
-  const rows=document.getElementById('cfg-ing-list').querySelectorAll('.ing-row');
-  const ingredients=[];
-  rows.forEach(r=>{
-    const ins=r.querySelectorAll('input');
-    const n=ins[0].value.trim();
-    const k=parseFloat(ins[1].value)||0;
-    const g=parseFloat(ins[2].value)||0;
-    if(n&&k&&g)ingredients.push({name:n,k100:k,g});
-  });
-  if(!ingredients.length){toast('Mind. eine Zutat eingeben');return}
   const saved=getSaved();
-  saved.push({name,ingredients});
+  if(cfgMealTab==='einfach'){
+    const kcal=parseFloat(document.getElementById('cfg-simple-kcal').value)||0;
+    if(!kcal){toast('Kalorien eingeben');return}
+    saved.push({name,simpleKcal:Math.round(kcal)});
+  }else{
+    if(!cfgIngredients.length){toast('Mind. eine Zutat hinzufügen');return}
+    saved.push({name,ingredients:[...cfgIngredients]});
+  }
   lss('kal_saved',saved);
   document.getElementById('cfg-meal-name').value='';
-  document.getElementById('cfg-ing-list').innerHTML='';
-  addIngRow();
+  document.getElementById('cfg-simple-kcal').value='';
+  document.getElementById('cfg-srch').value='';
+  document.getElementById('cfg-srch-selected').style.display='none';
+  cfgIngredients=[];
+  renderCfgIngList();
   renderCfgSaved();
   toast('"'+name+'" gespeichert');
 }
@@ -555,11 +674,13 @@ function renderCfgSaved(){
   const saved=getSaved();
   const el=document.getElementById('cfg-saved-list');
   if(!saved.length){el.innerHTML='<div class="empty-hint">Keine Mahlzeiten gespeichert.</div>';return}
-  el.innerHTML='<div class="saved-list-wrap">'+saved.map((m,i)=>
-    `<div class="saved-meal-row" style="cursor:default">
-      <div><div class="saved-meal-name">${m.name}</div><div class="saved-meal-meta">${m.ingredients.length} Zutaten</div></div>
+  el.innerHTML='<div class="saved-list-wrap">'+saved.map((m,i)=>{
+    const meta=m.simpleKcal!=null?m.simpleKcal+' kcal':(m.ingredients?.length||0)+' Zutaten';
+    return `<div class="saved-meal-row" style="cursor:default">
+      <div><div class="saved-meal-name">${m.name}</div><div class="saved-meal-meta">${meta}</div></div>
       <button onclick="delSaved(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px">✕</button>
-    </div>`).join('')+'</div>';
+    </div>`;
+  }).join('')+'</div>';
 }
 
 function delSaved(i){
