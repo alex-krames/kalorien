@@ -302,31 +302,41 @@ const BASE_DB = [
   {n:'Vollmilch 3,5%',k:61},{n:'Magermilch 1,5%',k:47},{n:'Hafermilch',k:45},{n:'Mandelmilch',k:24},
   {n:'Joghurt natur 3,5%',k:63},{n:'Joghurt mager',k:36},{n:'Magerquark',k:59},{n:'Sahne',k:337},
   {n:'Käse Gouda',k:356},{n:'Käse Mozzarella',k:254},{n:'Frischkäse',k:253},{n:'Parmesan',k:431},
+  {n:'Buttermilch',k:35},{n:'Kefir',k:52},{n:'Schmand',k:242},{n:'Crème fraîche',k:292},
   {n:'Ei',k:155},{n:'Eiweiß',k:52},{n:'Eigelb',k:322},
   {n:'Hähnchenbrustfilet',k:120},{n:'Hähnchenschenkel',k:171},{n:'Truthahn',k:107},
   {n:'Schweineschnitzel',k:143},{n:'Schweinebauch',k:395},{n:'Rinderfilet',k:158},
-  {n:'Hackfleisch gemischt',k:247},{n:'Salami',k:425},{n:'Schinken gekocht',k:111},
+  {n:'Hackfleisch gemischt',k:247},{n:'Hackfleisch Rind',k:212},{n:'Hackfleisch Schwein',k:263},
+  {n:'Salami',k:425},{n:'Schinken gekocht',k:111},{n:'Schinken roh',k:145},
+  {n:'Würstchen Wiener',k:290},{n:'Würstchen Frankfurter',k:285},{n:'Bratwurst',k:305},
+  {n:'Bockwurst',k:275},{n:'Leberwurst',k:326},{n:'Blutwurst',k:210},{n:'Weißwurst',k:196},
+  {n:'Jagdwurst',k:220},{n:'Bierschinken',k:150},{n:'Lyoner',k:185},{n:'Mortadella',k:311},
   {n:'Lachs',k:208},{n:'Thunfisch Dose',k:116},{n:'Garnelen',k:85},{n:'Seelachs',k:72},{n:'Forelle',k:119},
+  {n:'Hering',k:158},{n:'Makrele',k:205},{n:'Sardinen Dose',k:208},{n:'Kabeljau',k:82},
   {n:'Tofu',k:76},{n:'Tempeh',k:192},{n:'Seitan',k:370},
   {n:'Kartoffeln',k:77},{n:'Süßkartoffel',k:86},{n:'Reis weiß gekocht',k:130},{n:'Reis Vollkorn gekocht',k:112},
   {n:'Nudeln gekocht',k:158},{n:'Vollkornnudeln gekocht',k:149},{n:'Quinoa gekocht',k:120},
-  {n:'Couscous gekocht',k:112},{n:'Bulgur gekocht',k:83},
+  {n:'Couscous gekocht',k:112},{n:'Bulgur gekocht',k:83},{n:'Spätzle',k:149},{n:'Gnocchi',k:130},
   {n:'Brokkoli',k:34},{n:'Spinat',k:23},{n:'Karotten',k:41},{n:'Tomaten',k:18},{n:'Gurke',k:15},
   {n:'Paprika rot',k:31},{n:'Paprika gelb',k:27},{n:'Zwiebeln',k:40},{n:'Knoblauch',k:149},
   {n:'Champignons',k:22},{n:'Zucchini',k:17},{n:'Aubergine',k:25},{n:'Blumenkohl',k:25},
-  {n:'Weißkohl',k:25},{n:'Eisbergsalat',k:14},{n:'Rucola',k:25},{n:'Avocado',k:160},
+  {n:'Weißkohl',k:25},{n:'Rotkohl',k:31},{n:'Eisbergsalat',k:14},{n:'Rucola',k:25},{n:'Avocado',k:160},
+  {n:'Erbsen',k:81},{n:'Mais',k:86},{n:'Spargel',k:20},{n:'Lauch',k:31},{n:'Sellerie',k:13},
   {n:'Linsen gekocht',k:116},{n:'Kichererbsen gekocht',k:164},{n:'Kidneybohnen',k:127},
   {n:'Mandeln',k:579},{n:'Walnüsse',k:654},{n:'Cashews',k:553},{n:'Erdnüsse',k:567},
   {n:'Erdnussbutter',k:588},{n:'Mandelmus',k:614},{n:'Sonnenblumenkerne',k:584},{n:'Chiasamen',k:486},
   {n:'Schokolade Zartbitter 70%',k:598},{n:'Schokolade Vollmilch',k:534},{n:'Gummibärchen',k:343},
-  {n:'Chips',k:536},{n:'Popcorn gesalzen',k:387},{n:'Kekse',k:480},
+  {n:'Chips',k:536},{n:'Popcorn gesalzen',k:387},{n:'Kekse',k:480},{n:'Waffeln',k:411},
   {n:'Apfelsaft',k:46},{n:'Orangensaft',k:45},{n:'Cola',k:42},{n:'Bier 5%',k:43},
   {n:'Rotwein',k:85},{n:'Weißwein',k:82},{n:'Kaffee schwarz',k:2},{n:'Cappuccino',k:40},
-  {n:'Latte Macchiato',k:60},{n:'Grüner Tee',k:1},
+  {n:'Latte Macchiato',k:60},{n:'Grüner Tee',k:1},{n:'Energydrink',k:45},
   {n:'Protein Shake',k:110},{n:'Müsliriegel',k:380},{n:'Bananen-Smoothie',k:90},
   {n:'Hummus',k:166},{n:'Tzatziki',k:80},{n:'Mayonnaise',k:680},{n:'Ketchup',k:112},
-  {n:'Honig',k:304},{n:'Marmelade',k:260},{n:'Nutella',k:539},
+  {n:'Honig',k:304},{n:'Marmelade',k:260},{n:'Nutella',k:539},{n:'Senf',k:77},
+  {n:'Pizza Margherita',k:249},{n:'Döner',k:220},{n:'Burger',k:280},{n:'Pommes',k:312},
+  {n:'Schnitzel paniert',k:270},{n:'Gulasch',k:125},{n:'Linseneintopf',k:74},
 ];
+
 
 function dateKey(offset=0){
   const d=new Date();
@@ -464,21 +474,23 @@ function handleSearch(q){
   clearTimeout(sTimer);
   const rEl=document.getElementById('srch-results');
   if(!q.trim()){rEl.style.display='none';return}
-  const local=BASE_DB.filter(x=>x.n.toLowerCase().includes(q.toLowerCase())).slice(0,6);
-  showSearchResults(local);
+  const local=BASE_DB.filter(x=>x.n.toLowerCase().includes(q.toLowerCase())).slice(0,5);
+  if(local.length)showSearchResults(local);
   if(q.length>=2){
     sTimer=setTimeout(async()=>{
       try{
-        const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&lc=de&page_size=8`);
+        const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&lc=de&page_size=10`);
         const data=await r.json();
         const online=(data.products||[])
           .filter(p=>p.product_name&&p.nutriments?.['energy-kcal_100g']>0)
           .map(p=>({n:p.product_name,k:Math.round(p.nutriments['energy-kcal_100g'])}))
           .filter(x=>!local.find(a=>a.n.toLowerCase()===x.n.toLowerCase()))
-          .slice(0,6);
+          .slice(0,8);
         showSearchResults([...local,...online]);
-      }catch{}
-    },700);
+      }catch{
+        if(!local.length)rEl.style.display='none';
+      }
+    },500);
   }
 }
 
@@ -628,21 +640,23 @@ function cfgSearch(q){
   clearTimeout(cfgSTimer);
   const el=document.getElementById('cfg-srch-results');
   if(!q.trim()){el.style.display='none';return}
-  const local=BASE_DB.filter(x=>x.n.toLowerCase().includes(q.toLowerCase())).slice(0,6);
-  cfgShowResults(local);
+  const local=BASE_DB.filter(x=>x.n.toLowerCase().includes(q.toLowerCase())).slice(0,5);
+  if(local.length)cfgShowResults(local);
   if(q.length>=2){
     cfgSTimer=setTimeout(async()=>{
       try{
-        const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&lc=de&page_size=8`);
+        const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&lc=de&page_size=10`);
         const data=await r.json();
         const online=(data.products||[])
           .filter(p=>p.product_name&&p.nutriments?.['energy-kcal_100g']>0)
           .map(p=>({n:p.product_name,k:Math.round(p.nutriments['energy-kcal_100g'])}))
           .filter(x=>!local.find(a=>a.n.toLowerCase()===x.n.toLowerCase()))
-          .slice(0,5);
+          .slice(0,8);
         cfgShowResults([...local,...online]);
-      }catch{}
-    },700);
+      }catch{
+        if(!local.length)el.style.display='none';
+      }
+    },500);
   }
 }
 
