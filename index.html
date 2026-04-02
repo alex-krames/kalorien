@@ -132,6 +132,18 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
     <button class="day-tab active" onclick="switchDay(0)" id="tab0">heute</button>
   </div>
   <div id="meals-root"></div>
+
+  <div id="activity-section" style="margin-top:16px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--bg2)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:15px">&#127939;</span>
+        <span style="font-size:14px;font-weight:500">Aktivit&#228;ten</span>
+        <span style="font-size:12px;color:var(--text2)" id="act-total-lbl"></span>
+      </div>
+      <button id="act-add-btn" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:22px;line-height:1;padding:0 2px" onclick="openActModal()">+</button>
+    </div>
+    <div id="act-list" style="padding:0 14px;background:var(--bg)"></div>
+  </div>
 </div>
 
 <!-- Modal: Eintrag hinzufügen -->
@@ -246,6 +258,35 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
   </div>
 </div>
 
+<!-- Modal: Aktivität -->
+<div class="modal-bg" id="m-act" style="display:none" onclick="bgClose(event,'m-act')">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeModal('m-act')"></div>
+    <div class="modal-title">Aktivit&#228;t hinzuf&#252;gen</div>
+    <label class="field-label">Aktivit&#228;t</label>
+    <select id="act-type" style="width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:15px;background:var(--bg2);color:var(--text);outline:none;margin-bottom:0;-webkit-appearance:none">
+      <option>Laufen</option>
+      <option>Radfahren</option>
+      <option>Schwimmen</option>
+      <option>Wandern</option>
+      <option>Krafttraining</option>
+      <option>Yoga</option>
+      <option>HIIT</option>
+      <option>Spaziergang</option>
+      <option>Rudern</option>
+      <option>Klettern</option>
+      <option>Tanzen</option>
+      <option>Fussball</option>
+      <option>Tennis</option>
+      <option>Sonstiges</option>
+    </select>
+    <label class="field-label">Verbrannte kcal</label>
+    <input type="number" id="act-kcal" placeholder="z. B. 350" inputmode="numeric">
+    <button class="btn-primary" onclick="confirmAct()">Hinzuf&#252;gen</button>
+    <button class="btn-secondary" onclick="closeModal('m-act')">Abbrechen</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -323,9 +364,11 @@ function consumed(meals){return meals.flat().reduce((s,e)=>s+(e.kcal||0),0)}
 
 function render(){
   const meals=getMeals();
+  const acts=getActivities();
   const total=consumed(meals);
-  const rem=limit-total;
-  const pct=Math.min(100,Math.round(total/limit*100));
+  const actTotal=acts.reduce((s,a)=>s+a.kcal,0);
+  const rem=limit-total+actTotal;
+  const pct=Math.min(100,Math.round((total-actTotal)/limit*100));
 
   const rb=document.getElementById('remaining-big');
   rb.textContent=Math.round(rem);
@@ -372,6 +415,7 @@ function render(){
     ${itemsHTML?`<div class="meal-items">${itemsHTML}</div>`:''}`;
     root.appendChild(sec);
   });
+  renderActivities();
 }
 
 function switchDay(n){
@@ -761,6 +805,63 @@ function checkBackupBanner(){
   if(!last)return;
   const days=(Date.now()-last)/(1000*60*60*24);
   if(days>=7)document.getElementById('backup-banner').style.display='flex';
+}
+
+function getActivities(){
+  const d=getDays(),k=dateKey(dayOffset);
+  if(!d[k])d[k]=[[],[],[],[]];
+  return d[k].acts||[];
+}
+
+function setActivities(acts){
+  const d=getDays(),k=dateKey(dayOffset);
+  if(!d[k])d[k]=[[],[],[],[]];
+  d[k].acts=acts;
+  setDays(d);
+}
+
+function renderActivities(){
+  const acts=getActivities();
+  const total=acts.reduce((s,a)=>s+a.kcal,0);
+  const lbl=document.getElementById('act-total-lbl');
+  lbl.textContent=total>0?'−'+Math.round(total)+' kcal':'';
+  const el=document.getElementById('act-list');
+  const ro=dayOffset<0;
+  const btn=document.getElementById('act-add-btn');
+  if(btn)btn.style.display=ro?'none':'block';
+  if(!acts.length){el.innerHTML='';return}
+  el.innerHTML=acts.map((a,i)=>`<div class="meal-item">
+    <span>${a.type}</span>
+    <div class="meal-item-right">
+      <span class="meal-item-kcal" style="color:var(--green)">−${Math.round(a.kcal)} kcal</span>
+      ${ro?'':`<button class="del-btn" onclick="delAct(${i})">&#10005;</button>`}
+    </div>
+  </div>`).join('');
+}
+
+function delAct(i){
+  const acts=getActivities();
+  acts.splice(i,1);
+  setActivities(acts);
+  renderActivities();
+  render();
+}
+
+function openActModal(){
+  document.getElementById('act-kcal').value='';
+  document.getElementById('m-act').style.display='flex';
+}
+
+function confirmAct(){
+  const type=document.getElementById('act-type').value;
+  const kcal=parseFloat(document.getElementById('act-kcal').value)||0;
+  if(!kcal){toast('kcal eingeben');return}
+  const acts=getActivities();
+  acts.push({type,kcal:Math.round(kcal)});
+  setActivities(acts);
+  closeModal('m-act');
+  renderActivities();
+  render();
 }
 
 render();
