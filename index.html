@@ -166,8 +166,11 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
 
     <div id="ap-search" style="display:none">
       <label class="field-label">Lebensmittel</label>
-      <input type="text" id="srch-input" placeholder="Suchen…" oninput="handleSearch(this.value)" autocomplete="off">
-      <div id="srch-results" style="display:none" class="search-results"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="srch-input" placeholder="Suchen…" oninput="handleSearch(this.value)" autocomplete="off" style="flex:1;margin-bottom:0">
+        <button onclick="openBarcode('main')" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0" title="Barcode scannen">▦</button>
+      </div>
+      <div id="srch-results" style="display:none;margin-top:6px" class="search-results"></div>
       <div id="srch-selected" style="display:none" class="selected-food-box">
         <div class="selected-food-name" id="sel-name"></div>
         <div class="grams-row">
@@ -222,8 +225,11 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
     </div>
     <div id="mp-zutaten">
       <label class="field-label">Zutat suchen</label>
-      <input type="text" id="cfg-srch" placeholder="Suchen..." oninput="cfgSearch(this.value)" autocomplete="off">
-      <div id="cfg-srch-results" class="search-results" style="display:none"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="cfg-srch" placeholder="Suchen..." oninput="cfgSearch(this.value)" autocomplete="off" style="flex:1;margin-bottom:0">
+        <button onclick="openBarcode('cfg')" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0" title="Barcode scannen">▦</button>
+      </div>
+      <div id="cfg-srch-results" class="search-results" style="display:none;margin-top:6px"></div>
       <div id="cfg-srch-selected" style="display:none" class="selected-food-box">
         <div class="selected-food-name" id="cfg-sel-name"></div>
         <div class="grams-row">
@@ -255,6 +261,22 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
     </label>
     <div class="divider"></div>
     <button onclick="closeModal('m-settings')" style="display:block;width:100%;padding:13px;background:#555;color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:500;cursor:pointer;margin-top:0">Zurück</button>
+  </div>
+</div>
+
+<!-- Modal: Barcode -->
+<div class="modal-bg" id="m-barcode" style="display:none" onclick="bgClose(event,'m-barcode')">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeBarcodeModal()"></div>
+    <div class="modal-title">Barcode scannen</div>
+    <div style="position:relative;width:100%;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:1">
+      <video id="barcode-video" style="width:100%;height:100%;object-fit:cover" playsinline autoplay muted></video>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+        <div style="width:70%;height:2px;background:rgba(255,80,80,0.8);box-shadow:0 0 8px rgba(255,80,80,0.6)"></div>
+      </div>
+    </div>
+    <div id="barcode-status" style="font-size:13px;color:var(--text2);text-align:center;margin-top:10px">Kamera wird gestartet…</div>
+    <button class="btn-secondary" onclick="closeBarcodeModal()" style="margin-top:10px">Abbrechen</button>
   </div>
 </div>
 
@@ -469,6 +491,23 @@ function setAddTab(t){
   if(t==='saved')renderSavedList();
 }
 
+async function searchOFF(q){
+  const params=new URLSearchParams({
+    search_terms:q,
+    search_simple:1,
+    action:'process',
+    json:1,
+    lc:'de',
+    countries_tags:'en:germany',
+    page_size:12
+  });
+  const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?${params}`);
+  const data=await r.json();
+  return (data.products||[])
+    .filter(p=>p.product_name&&(p.nutriments?.['energy-kcal_100g']||0)>0)
+    .map(p=>({n:p.product_name,k:Math.round(p.nutriments['energy-kcal_100g'])}));
+}
+
 let sTimer=null;
 function handleSearch(q){
   clearTimeout(sTimer);
@@ -479,14 +518,11 @@ function handleSearch(q){
   if(q.length>=2){
     sTimer=setTimeout(async()=>{
       try{
-        const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&lc=de&page_size=10`);
-        const data=await r.json();
-        const online=(data.products||[])
-          .filter(p=>p.product_name&&p.nutriments?.['energy-kcal_100g']>0)
-          .map(p=>({n:p.product_name,k:Math.round(p.nutriments['energy-kcal_100g'])}))
+        const online=(await searchOFF(q))
           .filter(x=>!local.find(a=>a.n.toLowerCase()===x.n.toLowerCase()))
           .slice(0,8);
         showSearchResults([...local,...online]);
+        if(!local.length&&!online.length)rEl.style.display='none';
       }catch{
         if(!local.length)rEl.style.display='none';
       }
@@ -645,14 +681,11 @@ function cfgSearch(q){
   if(q.length>=2){
     cfgSTimer=setTimeout(async()=>{
       try{
-        const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&lc=de&page_size=10`);
-        const data=await r.json();
-        const online=(data.products||[])
-          .filter(p=>p.product_name&&p.nutriments?.['energy-kcal_100g']>0)
-          .map(p=>({n:p.product_name,k:Math.round(p.nutriments['energy-kcal_100g'])}))
+        const online=(await searchOFF(q))
           .filter(x=>!local.find(a=>a.n.toLowerCase()===x.n.toLowerCase()))
           .slice(0,8);
         cfgShowResults([...local,...online]);
+        if(!local.length&&!online.length)el.style.display='none';
       }catch{
         if(!local.length)el.style.display='none';
       }
@@ -881,6 +914,85 @@ function confirmAct(){
   closeModal('m-act');
   renderActivities();
   render();
+}
+
+let barcodeStream=null;
+let barcodeTarget=null;
+let barcodeDetector=null;
+
+async function openBarcode(target){
+  barcodeTarget=target;
+  document.getElementById('m-barcode').style.display='flex';
+  document.getElementById('barcode-status').textContent='Kamera wird gestartet…';
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    barcodeStream=stream;
+    const video=document.getElementById('barcode-video');
+    video.srcObject=stream;
+    await video.play();
+    if('BarcodeDetector' in window){
+      barcodeDetector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+      document.getElementById('barcode-status').textContent='Barcode in die rote Linie halten';
+      scanLoop();
+    }else{
+      document.getElementById('barcode-status').textContent='Barcode-Erkennung nicht unterstützt. Bitte manuell suchen.';
+    }
+  }catch(e){
+    document.getElementById('barcode-status').textContent='Kamera nicht verfügbar: '+e.message;
+  }
+}
+
+async function scanLoop(){
+  if(!barcodeStream||!barcodeDetector)return;
+  const video=document.getElementById('barcode-video');
+  try{
+    const codes=await barcodeDetector.detect(video);
+    if(codes.length>0){
+      const barcode=codes[0].rawValue;
+      document.getElementById('barcode-status').textContent='Barcode erkannt: '+barcode;
+      await lookupBarcode(barcode);
+      return;
+    }
+  }catch{}
+  if(barcodeStream)requestAnimationFrame(scanLoop);
+}
+
+async function lookupBarcode(barcode){
+  document.getElementById('barcode-status').textContent='Produkt wird gesucht…';
+  try{
+    const r=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const data=await r.json();
+    if(data.status===1&&data.product){
+      const p=data.product;
+      const name=p.product_name_de||p.product_name||'Unbekanntes Produkt';
+      const kcal=Math.round(p.nutriments?.['energy-kcal_100g']||0);
+      if(!kcal){
+        document.getElementById('barcode-status').textContent='Keine Kalorienangabe gefunden.';
+        if(barcodeStream)requestAnimationFrame(scanLoop);
+        return;
+      }
+      closeBarcodeModal();
+      const food={n:name,k:kcal};
+      if(barcodeTarget==='main'){
+        selectFood(food);
+        setAddTab('search');
+      }else{
+        cfgSelectFood(food);
+      }
+    }else{
+      document.getElementById('barcode-status').textContent='Produkt nicht gefunden. Weiter scannen…';
+      if(barcodeStream)requestAnimationFrame(scanLoop);
+    }
+  }catch{
+    document.getElementById('barcode-status').textContent='Fehler beim Abruf. Weiter scannen…';
+    if(barcodeStream)requestAnimationFrame(scanLoop);
+  }
+}
+
+function closeBarcodeModal(){
+  if(barcodeStream){barcodeStream.getTracks().forEach(t=>t.stop());barcodeStream=null;}
+  barcodeDetector=null;
+  document.getElementById('m-barcode').style.display='none';
 }
 
 render();
