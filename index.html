@@ -234,8 +234,6 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
     <div class="modal-title" style="font-size:15px">Gespeicherte Mahlzeiten</div>
     <div id="cfg-saved-list"></div>
 
-    <button class="btn-secondary" style="margin-top:12px" onclick="closeModal('m-settings')">Zurück</button>
-
     <div class="divider"></div>
     <div class="modal-title" style="font-size:15px">Datensicherung</div>
     <button class="btn-primary" onclick="exportData()">Daten exportieren (JSON)</button>
@@ -243,6 +241,8 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--text2)}
       Daten importieren
       <input type="file" accept=".json" onchange="importData(event)" style="display:none">
     </label>
+    <div class="divider"></div>
+    <button onclick="closeModal('m-settings')" style="display:block;width:100%;padding:13px;background:#555;color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:500;cursor:pointer;margin-top:0">Zurück</button>
   </div>
 </div>
 
